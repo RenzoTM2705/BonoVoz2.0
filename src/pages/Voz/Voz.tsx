@@ -90,8 +90,8 @@ export default function Voz() {
         const recognition = new SpeechRecognitionApi()
 
         recognition.lang = 'es-PE'
-        recognition.continuous = true
-        recognition.interimResults = true
+        recognition.continuous = false
+        recognition.interimResults = false
 
         recognition.onstart = () => {
             setIsListening(true)
@@ -102,18 +102,11 @@ export default function Voz() {
         }
 
         recognition.onresult = (event) => {
-            const transcript = Array.from(event.results)
-                .map((result) => result[0].transcript)
-                .join(' ')
+            const result = event.results[event.results.length - 1]
+            const transcription = result[0].transcript.trim()
 
-            setText(transcript)
-
-            const dni = extractDniFromText(transcript)
-
-            if (dni) {
-                recognition.stop()
-                validateText(transcript)
-            }
+            setText(transcription)
+            validateText(transcription)
         }
 
         recognition.onerror = (event) => {
