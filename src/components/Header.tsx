@@ -9,7 +9,7 @@ export default function Header() {
   const [underlineStyle, setUnderlineStyle] = useState({})
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const navRefs = useRef<(HTMLAnchorElement | null)[]>([])
-  const activeIndex = location.pathname === '/voz' ? 1 : 0
+  const activeIndex = location.pathname === '/voz' ? 1 : location.pathname === '/bono' ? 2 : 0
 
   useLayoutEffect(() => {
     const updateUnderlinePosition = () => {
@@ -29,16 +29,18 @@ export default function Header() {
 
   const navItems = [
     { label: 'Inicio', to: '/' },
-    { label: 'Voz', to: '/voz' }
+    { label: 'Voz', to: '/voz' },
+    { label: 'Mi Bono', to: '/bono' }
   ]
 
   const mobileMenuItems = [
     { label: 'Inicio', to: '/', description: 'Pantalla principal' },
-    { label: 'Voz', to: '/voz', description: 'Verificacion por voz' }
+    { label: 'Voz', to: '/voz', description: 'Verificacion por voz' },
+    { label: 'Mi Bono', to: '/bono', description: 'Estado de beneficio' }
   ]
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-white shadow-sm relative">
+    <header className="sticky top-0 z-50 w-full bg-white shadow-sm">
       <style>{`
         .nav-underline {
           position: absolute;
@@ -72,9 +74,6 @@ export default function Header() {
           ))}
           {/* Animated underline */}
           <span className="nav-underline" style={underlineStyle}></span>
-          <a href="#bono" className="text-sm text-slate-600 hover:text-slate-900 transition">
-            Mi Bono
-          </a>
         </nav>
 
         {/* Desktop Icons */}
@@ -138,14 +137,6 @@ export default function Header() {
               )
             })}
 
-            <a
-              href="#bono"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="block rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 px-4 py-3"
-            >
-              <p className="text-base font-semibold">Mi Bono</p>
-              <p className="text-xs text-slate-500">Estado de beneficio</p>
-            </a>
           </nav>
         </div>
       )}
