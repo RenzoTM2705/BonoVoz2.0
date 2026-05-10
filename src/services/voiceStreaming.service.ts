@@ -16,8 +16,6 @@ export interface StreamingTranscription {
 export class VoiceStreamingService {
   private ws: WebSocket | null = null
   private apiUrl: string
-  private onTranscription: ((data: StreamingTranscription) => void) | null = null
-  private onError: ((error: string) => void) | null = null
 
   constructor(apiUrl: string) {
     this.apiUrl = apiUrl
@@ -44,8 +42,6 @@ export class VoiceStreamingService {
 
         this.ws.onopen = () => {
           console.log('[INFO] WebSocket conectado')
-          this.onTranscription = onTranscription
-          this.onError = onError
           resolve()
         }
 

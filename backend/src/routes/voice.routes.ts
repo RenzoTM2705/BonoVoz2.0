@@ -14,7 +14,7 @@ const upload = multer({
   limits: {
     fileSize: 25 * 1024 * 1024, // 25MB máximo
   },
-  fileFilter: (req, file, cb) => {
+  fileFilter: (_req, file, cb) => {
     // Validar que sea un archivo de audio
     if (file.mimetype.startsWith('audio/')) {
       cb(null, true)
