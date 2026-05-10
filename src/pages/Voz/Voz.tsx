@@ -4,133 +4,125 @@ import iconSunat from '../../assets/icon-sunat.svg'
 import iconHelp from '../../assets/icon-help.svg'
 import iconBiometryActive from '../../assets/icon-biometry-active.svg'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 import type { Beneficiary } from '../../types/beneficiary.types'
 
-import {
-    extractDniFromText,
-    findBeneficiaryByDni,
-} from '../../utils/dni.utils'
-
-type SpeechRecognitionEvent = Event & {
-    results: SpeechRecognitionResultList
-}
-
-type SpeechRecognitionErrorEvent = Event & {
-    error: string
-}
-
-type SpeechRecognitionConstructor = new () => SpeechRecognition
-
-type SpeechRecognition = {
-    lang: string
-    continuous: boolean
-    interimResults: boolean
-    start: () => void
-    stop: () => void
-    onstart: (() => void) | null
-    onend: (() => void) | null
-    onresult: ((event: SpeechRecognitionEvent) => void) | null
-    onerror: ((event: SpeechRecognitionErrorEvent) => void) | null
-}
-
-declare global {
-    interface Window {
-        SpeechRecognition?: SpeechRecognitionConstructor
-        webkitSpeechRecognition?: SpeechRecognitionConstructor
-    }
-}
-
+import { useAudioRecorder } from '../../hooks/useAudioRecorder'
+import { VoiceStreamingService } from '../../services/voiceStreaming.service'
 
 export default function Voz() {
-
     const [text, setText] = useState('')
     const [detectedDni, setDetectedDni] = useState<string | null>(null)
     const [beneficiary, setBeneficiary] = useState<Beneficiary | null>(null)
     const [error, setError] = useState('')
     const [successMessage, setSuccessMessage] = useState('')
-    const [isListening, setIsListening] = useState(false)
+    const [isTranscribing, setIsTranscribing] = useState(false)
 
-    function validateText(transcription: string) {
+    const streamingServiceRef = useRef<VoiceStreamingService | null>(null)
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+
+    const {
+        startRecording,
+        stopRecording,
+        audioBlob,
+        isRecording,
+        error: recorderError,
+        resetRecorder,
+    } = useAudioRecorder((chunk) => {
+        // Callback: enviar chunk de audio al WebSocket
+        if (streamingServiceRef.current?.isConnected()) {
+            streamingServiceRef.current.sendAudioChunk(chunk)
+        }
+    })
+
+    useEffect(() => {
+        if (recorderError) {
+            setError(recorderError)
+        }
+    }, [recorderError])
+
+    async function startStreamingSession() {
+        try {
+            setError('')
+            setIsTranscribing(true)
+            
+            const service = new VoiceStreamingService(apiUrl)
+            streamingServiceRef.current = service
+
+            // Conectar al WebSocket del backend
+            await service.connect(
+                (data) => {
+                    // Actualizar transcripción en TIEMPO REAL
+                    setText(data.transcription)
+                    setDetectedDni(data.dni)
+                    
+                    // Si está finalizada (no provisional), actualizar beneficiario
+                    if (!data.isInterim && data.beneficiary) {
+                        setBeneficiary(data.beneficiary)
+                    }
+                },
+                (err) => {
+                    setError(err)
+                    setIsTranscribing(false)
+                }
+            )
+
+            console.log('[INFO] Sesión de streaming iniciada')
+        } catch (err) {
+            const errorMsg = err instanceof Error ? err.message : 'Error al conectar'
+            setError(errorMsg)
+            setIsTranscribing(false)
+        }
+    }
+
+    function endStreamingSession() {
+        if (streamingServiceRef.current) {
+            // Enviar señal de fin de grabación
+            streamingServiceRef.current.finalize()
+            // Cerrar después de 5 segundos (dar tiempo para procesar)
+            setTimeout(() => {
+                if (streamingServiceRef.current) {
+                    streamingServiceRef.current.close()
+                    streamingServiceRef.current = null
+                }
+                setIsTranscribing(false)
+            }, 5000)
+        }
+    }
+
+    async function handleButtonClick() {
+        // Si ya está grabando → DETENER
+        if (isRecording) {
+            await stopRecording()
+            endStreamingSession()
+            return
+        }
+
+        // Si está transcribiendo → INICIAR NUEVA SESIÓN (para correcciones)
+        if (isTranscribing) {
+            // Cancelar transcripción anterior si existe
+            if (streamingServiceRef.current) {
+                streamingServiceRef.current.close()
+                streamingServiceRef.current = null
+            }
+            setIsTranscribing(false)
+        }
+
+        // Iniciar nueva grabación
         setError('')
         setSuccessMessage('')
+        setText('')
+        setDetectedDni(null)
         setBeneficiary(null)
-
-        const dni = extractDniFromText(transcription)
-
-        if (!dni) {
-            setDetectedDni(null)
-            setError('No se detectó un DNI válido de 8 dígitos.')
-            return
-        }
-
-        setDetectedDni(dni)
-
-        const result = findBeneficiaryByDni(dni)
-
-        if (!result) {
-            setError('El DNI detectado no está registrado.')
-            return
-        }
-
-        setBeneficiary(result)
-        setSuccessMessage('DNI validado correctamente.')
+        
+        // Primero conectar al streaming
+        await startStreamingSession()
+        
+        // Luego iniciar grabación
+        await startRecording()
     }
 
-    function handleStartSpeech() {
-        const SpeechRecognitionApi =
-            window.SpeechRecognition || window.webkitSpeechRecognition
-
-        if (!SpeechRecognitionApi) {
-            setError('Tu navegador no soporta reconocimiento de voz. Usa Google Chrome o Microsoft Edge.')
-            return
-        }
-
-        const recognition = new SpeechRecognitionApi()
-
-        recognition.lang = 'es-PE'
-        recognition.continuous = false
-        recognition.interimResults = false
-
-        recognition.onstart = () => {
-            setIsListening(true)
-            setError('')
-            setText('')
-            setDetectedDni(null)
-            setBeneficiary(null)
-        }
-
-        recognition.onresult = (event) => {
-            const result = event.results[event.results.length - 1]
-            const transcription = result[0].transcript.trim()
-
-            setText(transcription)
-            validateText(transcription)
-        }
-
-        recognition.onerror = (event) => {
-            console.log('Speech recognition error:', event.error)
-
-            if (event.error === 'not-allowed') {
-                setError('Permiso de micrófono denegado. Actívalo en la barra del navegador.')
-            } else if (event.error === 'no-speech') {
-                setError('No se detectó voz. Intenta hablar más cerca del micrófono.')
-            } else if (event.error === 'audio-capture') {
-                setError('No se encontró micrófono disponible.')
-            } else {
-                setError(`Error de reconocimiento de voz: ${event.error}`)
-            }
-
-            setIsListening(false)
-        }
-
-        recognition.onend = () => {
-            setIsListening(false)
-        }
-
-        recognition.start()
-    }
     return (
         <div className="w-full min-h-screen bg-slate-50">
             <style>{`
@@ -202,10 +194,15 @@ export default function Voz() {
                                 {/* Main button circle with pulse animation */}
                                 <button
                                     type="button"
-                                    onClick={handleStartSpeech}
-                                    className={`w-48 h-48 sm:w-56 sm:h-56 rounded-full border-8 border-slate-200 flex items-center justify-center cursor-pointer hover:scale-105 transition-transform shadow-lg flex-shrink-0 ${isListening ? 'pulse-ring bg-blue-700' : 'bg-slate-900'
-                                        }`}
-                                    aria-label="Iniciar grabación de voz"
+                                    onClick={handleButtonClick}
+                                    className={`w-48 h-48 sm:w-56 sm:h-56 rounded-full border-8 border-slate-200 flex items-center justify-center cursor-pointer hover:scale-105 transition-transform shadow-lg flex-shrink-0 ${
+                                        isRecording ? 'pulse-ring bg-red-600' : 'bg-slate-900 hover:bg-slate-800'
+                                    }`}
+                                    aria-label={
+                                        isRecording
+                                            ? 'Detener grabación de voz'
+                                            : 'Iniciar grabación de voz'
+                                    }
                                 >
                                     <svg
                                         className="w-16 h-16 sm:w-20 sm:h-20 text-white"
@@ -231,15 +228,20 @@ export default function Voz() {
                                     <div className="w-1 h-6 bg-blue-600 rounded-full"></div>
                                     <div className="w-1 h-4 bg-blue-600 rounded-full"></div>
                                 </div>
-                                {/* MOCK DNI INPUT */}
+                                {/* AUDIO STATUS AND RESULTS */}
                                 <div className="w-full max-w-md space-y-4">
+                                    {/* Status message */}
                                     <p className="text-center text-sm font-semibold text-slate-600">
-                                        {isListening ? 'Escuchando... diga su DNI completo' : 'Presione el botón una vez para iniciar'}
+                                        {isRecording
+                                            ? '🎤 Escuchando... diga su DNI completo'
+                                            : isTranscribing
+                                              ? '🔄 Transcribiendo...'
+                                              : 'Presione el botón para grabar'}
                                     </p>
 
                                     {text && (
                                         <div className="rounded-xl bg-white p-4 text-sm text-slate-700 shadow-sm">
-                                            <strong>Texto detectado:</strong> {text}
+                                            <strong>Transcripción:</strong> {text}
                                         </div>
                                     )}
 
