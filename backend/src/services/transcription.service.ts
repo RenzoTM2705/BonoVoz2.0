@@ -32,14 +32,16 @@ export async function transcribeAudioRealOpenAI(
     const startTime = Date.now()
 
     // Llamar a Deepgram API v3 via HTTP
-    const response = await fetch('https://api.deepgram.com/v1/listen?model=nova-2&language=' + language + '&smart_format=true', {
+    const init: any = {
       method: 'POST',
       headers: {
         'Authorization': `Token ${deepgramApiKey}`,
         'Content-Type': 'audio/webm',
       },
       body: audioBuffer,
-    })
+    }
+
+    const response = await fetch('https://api.deepgram.com/v1/listen?model=nova-2&language=' + language + '&smart_format=true', init)
 
     const duration = (Date.now() - startTime) / 1000
 
