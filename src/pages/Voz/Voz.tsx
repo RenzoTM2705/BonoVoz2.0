@@ -20,7 +20,7 @@ export default function Voz() {
     const [isTranscribing, setIsTranscribing] = useState(false)
 
     const streamingServiceRef = useRef<VoiceStreamingService | null>(null)
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:10000'
 
     const {
         startRecording,
