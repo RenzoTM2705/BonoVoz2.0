@@ -25,10 +25,8 @@ export default function Voz() {
     const {
         startRecording,
         stopRecording,
-        audioBlob,
         isRecording,
         error: recorderError,
-        resetRecorder,
     } = useAudioRecorder((chunk) => {
         // Callback: enviar chunk de audio al WebSocket
         if (streamingServiceRef.current?.isConnected()) {
