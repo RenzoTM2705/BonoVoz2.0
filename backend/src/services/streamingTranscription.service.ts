@@ -44,16 +44,18 @@ export async function* streamTranscribeAudio(
     const url = 'https://api.deepgram.com/v1/listen?model=nova-2&language=es&smart_format=true'
 
     // Crear fetch con streaming
-    const response = await fetch(url, {
+    const init: any = {
       method: 'POST',
       headers: {
         'Authorization': `Token ${deepgramApiKey}`,
         'Content-Type': 'application/octet-stream',
         'Transfer-Encoding': 'chunked',
       },
-      duplex: 'half' as any,
-      body: createReadableStream(audioChunks) as any,
-    })
+      duplex: 'half',
+      body: createReadableStream(audioChunks),
+    }
+
+    const response = await fetch(url, init)
 
     if (!response.ok) {
       const errorText = await response.text()
