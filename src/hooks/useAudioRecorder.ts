@@ -16,7 +16,11 @@ export function useAudioRecorder(onAudioChunk?: (chunk: Blob) => void) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       streamRef.current = stream
 
-      const mediaRecorder = new MediaRecorder(stream, { type: 'audio/webm' })
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : 'audio/mp4'
+
+      const mediaRecorder = new MediaRecorder(stream, { mimeType })
 
       mediaRecorder.ondataavailable = (event) => {
         chunksRef.current.push(event.data)

@@ -35,7 +35,7 @@ app.use(
 )
 
 // Middleware para logging
-app.use((req, res, next) => {
+app.use((req, _res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`)
   next()
 })
@@ -44,7 +44,7 @@ app.use((req, res, next) => {
 app.use('/api/voice', voiceRoutes)
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.status(200).json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
@@ -54,7 +54,7 @@ app.get('/health', (req, res) => {
 })
 
 // Root endpoint
-app.get('/', (req, res) => {
+app.get('/', (_req, res) => {
   res.status(200).json({
     message: 'BonoVoz Voice API',
     version: '1.0.0',
@@ -73,10 +73,10 @@ wss.on('connection', (ws) => {
 })
 
 // Manejo de errores 404
-app.use((req, res) => {
+app.use((_req, res) => {
   res.status(404).json({
     message: 'Endpoint no encontrado',
-    path: req.path,
+    path: _req.path,
   })
 })
 
@@ -84,9 +84,9 @@ app.use((req, res) => {
 app.use(
   (
     err: Error,
-    req: express.Request,
+    _req: express.Request,
     res: express.Response,
-    next: express.NextFunction
+    _next: express.NextFunction
   ) => {
     console.error('[ERROR]', err)
     res.status(500).json({
