@@ -1,37 +1,43 @@
 const SYSTEM_PROMPT = `Eres el asistente virtual de BonoVoz 2.0, una plataforma peruana para consulta y validación de bonos mediante DNI y voz. Responde de forma clara, breve y amable. No inventes datos personales ni confirmes bonos reales. Si el usuario pregunta por su bono, indícale que debe validar su DNI en la sección de voz. Si pregunta por administración, indica que el panel admin requiere credenciales.`
 
 export async function sendToAI(message: string): Promise<string> {
-  const OPENAI_API_KEY = process.env.OPENAI_API_KEY
-  if (!OPENAI_API_KEY) throw new Error('OPENAI_API_KEY no configurada en backend/.env')
+  const GEMINI_API_KEY = process.env.OPENAI_API_KEY
+  if (!GEMINI_API_KEY) throw new Error('OPENAI_API_KEY no configurada en backend/.env (usando Google Gemini)')
 
-  const url = process.env.OPENAI_API_URL || 'https://api.openai.com/v1/chat/completions'
+  // URL de Google Gemini API (v1beta)
+  const model = 'gemini-1.5-flash' // o 'gemini-pro' si prefieres
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`
 
   const payload = {
-    model: 'gpt-3.5-turbo',
-    messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: message }
+    systemInstruction: {
+      parts: [{ text: SYSTEM_PROMPT }],
+    },
+    contents: [
+      {
+        parts: [{ text: message }],
+      },
     ],
-    temperature: 0.2,
-    max_tokens: 300,
+    generationConfig: {
+      temperature: 0.2,
+      maxOutputTokens: 300,
+    },
   }
 
   const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
     },
     body: JSON.stringify(payload),
   })
 
   if (!res.ok) {
     const text = await res.text().catch(() => '')
-    throw new Error(`AI provider error ${res.status}: ${text}`)
+    throw new Error(`Gemini API error ${res.status}: ${text}`)
   }
 
   const data = await res.json().catch(() => null)
-  const reply = data?.choices?.[0]?.message?.content || ''
+  const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
   return String(reply).trim()
 }
 
