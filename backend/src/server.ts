@@ -9,6 +9,7 @@ import cors from 'cors'
 import { createServer } from 'http'
 import { WebSocketServer } from 'ws'
 import voiceRoutes from './routes/voice.routes.js'
+import chatbotRoutes from './routes/chatbot.routes.js'
 import { handleVoiceStream } from './controllers/voiceStream.controller.js'
 
 const app = express()
@@ -42,6 +43,7 @@ app.use((req, _res, next) => {
 
 // Rutas HTTP
 app.use('/api/voice', voiceRoutes)
+app.use('/api/chatbot', chatbotRoutes)
 
 // Health check endpoint
 app.get('/health', (_req, res) => {
@@ -61,6 +63,7 @@ app.get('/', (_req, res) => {
     endpoints: {
       transcribe: 'POST /api/voice/transcribe',
       stream: 'WS /api/voice/stream',
+      chatbot: 'POST /api/chatbot/message',
       health: 'GET /health',
     },
   })
