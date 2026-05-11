@@ -5,7 +5,7 @@ export async function sendToAI(message: string): Promise<string> {
   if (!GEMINI_API_KEY) throw new Error('OPENAI_API_KEY no configurada en backend/.env (usando Google Gemini)')
 
   // URL de Google Gemini API (v1beta)
-  const model = 'gemini-1.5-flash' // o 'gemini-pro' si prefieres
+  const model = 'gemini-3.1-flash-lite'
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`
 
   const payload = {
