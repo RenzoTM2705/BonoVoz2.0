@@ -1,7 +1,7 @@
-import express from 'express'
+import { Router } from 'express'
 import { handleMessage } from '../controllers/chatbot.controller.js'
 
-const router = express.Router()
+const router: Router = Router()
 
 router.post('/message', handleMessage)
 

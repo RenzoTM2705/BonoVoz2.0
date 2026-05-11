@@ -6,7 +6,7 @@ import { Router } from 'express'
 import multer from 'multer'
 import { transcribeVoice, healthCheck } from '../controllers/voice.controller.js'
 
-const router = Router()
+const router: Router = Router()
 
 // Configurar multer para manejar archivos de audio
 const upload = multer({
