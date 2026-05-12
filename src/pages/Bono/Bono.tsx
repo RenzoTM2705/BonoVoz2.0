@@ -4,14 +4,67 @@ import iconConsult from '../../assets/icon-consult.svg'
 import iconSimulate from '../../assets/icon-simulate.svg'
 import iconInfo from '../../assets/icon-info.svg'
 import iconFab from '../../assets/icon-fab.svg'
+import { Link } from 'react-router-dom'
+import { useUser } from '../../contexts/UserContext'
 
 export default function Bono() {
+  const { verifiedBeneficiary, isVerified } = useUser()
+
+  // Si no está verificado, mostrar mensaje de registro
+  if (!isVerified || !verifiedBeneficiary) {
+    return (
+      <div className="w-full min-h-screen bg-slate-50">
+        <main className="w-full py-10 sm:py-12 md:py-16 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-2xl mx-auto">
+            <section className="space-y-8">
+              {/* Empty State */}
+              <div className="bg-white rounded-2xl shadow-lg p-8 sm:p-12 text-center">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-amber-100 rounded-full mb-6">
+                  <span className="text-4xl">🔐</span>
+                </div>
+                <h1 className="text-3xl font-bold text-slate-900 mb-3">Primero debes verificarte</h1>
+                <p className="text-slate-600 text-lg mb-8 leading-relaxed">
+                  Para ver tu información de bonos, necesitas registrarte dictando tu DNI en la sección "Voz".
+                </p>
+                <Link
+                  to="/voz"
+                  className="inline-flex items-center justify-center gap-2 bg-slate-900 text-white px-8 py-3 rounded-xl font-semibold hover:bg-slate-800 transition"
+                >
+                  <span>Ir a Registrarme por Voz</span>
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+                </Link>
+              </div>
+
+              {/* Info Box */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                <div className="flex items-start gap-4">
+                  <span className="text-3xl flex-shrink-0">ℹ️</span>
+                  <div>
+                    <h3 className="font-semibold text-blue-900 mb-2">¿Cómo funciona?</h3>
+                    <ol className="space-y-2 text-sm text-blue-800 list-decimal list-inside">
+                      <li>Dirígete a la sección "Voz"</li>
+                      <li>Presiona el botón y di tu DNI completo</li>
+                      <li>Espera la validación de tu identidad</li>
+                      <li>Luego verás tus datos de bonos aquí</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    )
+  }
+
+  // Si está verificado, mostrar datos del beneficiario
   return (
     <div className="w-full min-h-screen bg-slate-50">
       <main className="w-full py-10 sm:py-12 md:py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto space-y-8 sm:space-y-10 md:space-y-12">
           <section className="space-y-2">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900">Hola, Maria Fernanda</h1>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900">Hola, {verifiedBeneficiary.fullName.split(' ')[0]}</h1>
             <p className="text-base sm:text-lg text-slate-600">Aqui tienes el resumen de tu subsidio actual.</p>
           </section>
 
@@ -21,11 +74,11 @@ export default function Bono() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="space-y-1">
                     <p className="text-xs sm:text-sm font-bold tracking-wider text-amber-800 uppercase">Monto disponible</p>
-                    <p className="text-4xl sm:text-5xl font-bold text-slate-900">S/ 760.00</p>
+                    <p className="text-4xl sm:text-5xl font-bold text-slate-900">S/ {verifiedBeneficiary.bonusAmount}</p>
                   </div>
                   <div className="inline-flex items-center gap-2 rounded-lg bg-green-900 px-3 py-1.5">
                     <img src={iconSeal} alt="Estado aprobado" className="w-4 h-4" />
-                    <span className="text-green-300 text-sm font-semibold">Aprobado</span>
+                    <span className="text-green-300 text-sm font-semibold">{verifiedBeneficiary.bonusStatus}</span>
                   </div>
                 </div>
 
@@ -36,16 +89,16 @@ export default function Bono() {
                     </div>
                     <div>
                       <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Fecha de cobro</p>
-                      <p className="text-base font-bold text-slate-900">24 de mayo, 2026</p>
+                      <p className="text-base font-bold text-slate-900">{verifiedBeneficiary.paymentDate}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                      <img src={iconConsult} alt="Estado del tramite" className="w-5 h-5" />
+                      <img src={iconConsult} alt="Tipo de bono" className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Estado del tramite</p>
-                      <p className="text-base font-semibold text-slate-900">Listo para retiro</p>
+                      <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Tipo de bono</p>
+                      <p className="text-base font-semibold text-slate-900">{verifiedBeneficiary.bonusName}</p>
                     </div>
                   </div>
                 </div>
@@ -71,7 +124,7 @@ export default function Bono() {
 
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
-                    <p className="text-base sm:text-lg font-semibold text-slate-900">Banco de la Nacion - Sede Central</p>
+                    <p className="text-base sm:text-lg font-semibold text-slate-900">{verifiedBeneficiary.paymentPlace}</p>
                     <p className="text-sm sm:text-base text-slate-600">Av. Javier Prado Este 2465, San Borja</p>
                   </div>
                   <button className="inline-flex items-center justify-center gap-2 bg-slate-900 text-white px-5 py-3 rounded-xl font-semibold hover:bg-slate-800 transition cursor-pointer">

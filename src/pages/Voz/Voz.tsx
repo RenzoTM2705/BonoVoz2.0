@@ -3,122 +3,110 @@ import iconReniec from '../../assets/icon-reniec.svg'
 import iconSunat from '../../assets/icon-sunat.svg'
 import iconHelp from '../../assets/icon-help.svg'
 import iconBiometryActive from '../../assets/icon-biometry-active.svg'
-
-import { useState, useEffect, useRef } from 'react'
-
+import { useState, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { Beneficiary } from '../../types/beneficiary.types'
-
-import { useAudioRecorder } from '../../hooks/useAudioRecorder'
-import { VoiceStreamingService } from '../../services/voiceStreaming.service'
+import { transcribeAudio } from '../../services/voice.service'
 
 export default function Voz() {
-    const [text, setText] = useState('')
+    const [isRecording, setIsRecording] = useState(false)
+    const [transcription, setTranscription] = useState('')
     const [detectedDni, setDetectedDni] = useState<string | null>(null)
-    const [beneficiary, setBeneficiary] = useState<Beneficiary | null>(null)
     const [error, setError] = useState('')
-    const [successMessage, setSuccessMessage] = useState('')
-    const [isTranscribing, setIsTranscribing] = useState(false)
+    const [isValidating, setIsValidating] = useState(false)
 
-    const streamingServiceRef = useRef<VoiceStreamingService | null>(null)
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:10000'
+    const navigate = useNavigate()
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+    const audioChunksRef = useRef<Blob[]>([])
+    
 
-    const {
-        startRecording,
-        stopRecording,
-        isRecording,
-        error: recorderError,
-    } = useAudioRecorder((chunk) => {
-        // Callback: enviar chunk de audio al WebSocket
-        if (streamingServiceRef.current?.isConnected()) {
-            streamingServiceRef.current.sendAudioChunk(chunk)
+    // Simular respuesta del backend con datos de beneficiario
+    const mockBeneficiaryData: Record<string, Beneficiary> = {
+        '45678912': {
+            id: 'ben-001',
+            dni: '45678912',
+            fullName: 'Maria Fernanda Quispe',
+            department: 'Lima',
+            province: 'Lima',
+            district: 'San Borja',
+            bonusName: 'Bono Alimentario 2024',
+            bonusAmount: 760,
+            bonusStatus: 'aprobado',
+            paymentPlace: 'Banco de la Nación - Sede Central',
+            paymentDate: '24 de mayo, 2026',
         }
-    })
+    }
 
-    useEffect(() => {
-        if (recorderError) {
-            setError(recorderError)
-        }
-    }, [recorderError])
-
-    async function startStreamingSession() {
+    async function handleStartRecording() {
         try {
             setError('')
-            setIsTranscribing(true)
-            
-            const service = new VoiceStreamingService(apiUrl)
-            streamingServiceRef.current = service
+            setTranscription('')
+            setDetectedDni(null)
 
-            // Conectar al WebSocket del backend
-            await service.connect(
-                (data) => {
-                    // Actualizar transcripción en TIEMPO REAL
-                    setText(data.transcription)
-                    setDetectedDni(data.dni)
-                    
-                    // Si está finalizada (no provisional), actualizar beneficiario
-                    if (!data.isInterim && data.beneficiary) {
-                        setBeneficiary(data.beneficiary)
-                    }
-                },
-                (err) => {
-                    setError(err)
-                    setIsTranscribing(false)
-                }
-            )
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+            const mediaRecorder = new MediaRecorder(stream)
+            mediaRecorderRef.current = mediaRecorder
+            audioChunksRef.current = []
 
-            console.log('[INFO] Sesión de streaming iniciada')
-        } catch (err) {
-            const errorMsg = err instanceof Error ? err.message : 'Error al conectar'
-            setError(errorMsg)
-            setIsTranscribing(false)
-        }
-    }
-
-    function endStreamingSession() {
-        if (streamingServiceRef.current) {
-            // Enviar señal de fin de grabación
-            streamingServiceRef.current.finalize()
-            // Cerrar después de 5 segundos (dar tiempo para procesar)
-            setTimeout(() => {
-                if (streamingServiceRef.current) {
-                    streamingServiceRef.current.close()
-                    streamingServiceRef.current = null
-                }
-                setIsTranscribing(false)
-            }, 5000)
-        }
-    }
-
-    async function handleButtonClick() {
-        // Si ya está grabando → DETENER
-        if (isRecording) {
-            await stopRecording()
-            endStreamingSession()
-            return
-        }
-
-        // Si está transcribiendo → INICIAR NUEVA SESIÓN (para correcciones)
-        if (isTranscribing) {
-            // Cancelar transcripción anterior si existe
-            if (streamingServiceRef.current) {
-                streamingServiceRef.current.close()
-                streamingServiceRef.current = null
+            mediaRecorder.ondataavailable = (event) => {
+                audioChunksRef.current.push(event.data)
             }
-            setIsTranscribing(false)
-        }
 
-        // Iniciar nueva grabación
-        setError('')
-        setSuccessMessage('')
-        setText('')
-        setDetectedDni(null)
-        setBeneficiary(null)
-        
-        // Primero conectar al streaming
-        await startStreamingSession()
-        
-        // Luego iniciar grabación
-        await startRecording()
+            mediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' })
+                await sendAudioToBackend(audioBlob)
+                stream.getTracks().forEach(track => track.stop())
+            }
+
+            mediaRecorder.start()
+            setIsRecording(true)
+        } catch (err) {
+            setError('No se pudo acceder al micrófono. Por favor, verifica los permisos.')
+        }
+    }
+
+    async function handleStopRecording() {
+        if (mediaRecorderRef.current && isRecording) {
+            mediaRecorderRef.current.stop()
+            setIsRecording(false)
+        }
+    }
+
+    async function sendAudioToBackend(audioBlob: Blob) {
+        try {
+            setIsValidating(true)
+            
+            // Usar servicio centralizado que apunta a /api/voice/transcribe
+            const data = await transcribeAudio(audioBlob)
+            const dni = data.dni || null
+            setTranscription(data.transcription || '')
+
+            if (data.beneficiary) {
+                // No confirmar aún: enviar candidato a la pantalla de verificación
+                setDetectedDni(data.beneficiary.dni)
+                setTimeout(() => navigate('/verificacion', { state: { candidate: data.beneficiary } }), 1000)
+                return
+            }
+
+            if (dni) {
+                setDetectedDni(dni)
+                const beneficiary = mockBeneficiaryData[dni]
+                if (beneficiary) {
+                    // Enviar candidato a verificación sin confirmar sesión
+                    setDetectedDni(beneficiary.dni)
+                    setTimeout(() => navigate('/verificacion', { state: { candidate: beneficiary } }), 1000)
+                } else {
+                    setError(`DNI ${dni} no encontrado en el sistema. Por favor, intenta de nuevo.`)
+                }
+            } else {
+                setError('No se detectó un DNI válido. Por favor, intenta de nuevo.')
+            }
+        } catch (err) {
+            const errorMsg = err instanceof Error ? err.message : 'Error al procesar el audio'
+            setError(errorMsg)
+        } finally {
+            setIsValidating(false)
+        }
     }
 
     return (
@@ -191,23 +179,14 @@ export default function Voz() {
                             <div className="flex flex-col items-center gap-8 sm:gap-10">
                                 {/* Main button circle with pulse animation */}
                                 <button
-                                    type="button"
-                                    onClick={handleButtonClick}
-                                    className={`w-48 h-48 sm:w-56 sm:h-56 rounded-full border-8 border-slate-200 flex items-center justify-center cursor-pointer hover:scale-105 transition-transform shadow-lg flex-shrink-0 ${
+                                    onClick={isRecording ? handleStopRecording : handleStartRecording}
+                                    disabled={isValidating}
+                                    className={`${
                                         isRecording ? 'pulse-ring bg-red-600' : 'bg-slate-900 hover:bg-slate-800'
-                                    }`}
-                                    aria-label={
-                                        isRecording
-                                            ? 'Detener grabación de voz'
-                                            : 'Iniciar grabación de voz'
-                                    }
+                                    } ${isValidating ? 'opacity-50 cursor-not-allowed' : ''} w-48 h-48 sm:w-56 sm:h-56 rounded-full border-8 border-slate-200 flex items-center justify-center cursor-pointer hover:scale-105 transition-transform shadow-lg flex-shrink-0`}
+                                    aria-label={isRecording ? 'Detener grabación' : 'Iniciar grabación'}
                                 >
-                                    <svg
-                                        className="w-16 h-16 sm:w-20 sm:h-20 text-white"
-                                        viewBox="0 0 24 24"
-                                        fill="currentColor"
-                                        aria-hidden="true"
-                                    >
+                                    <svg className="w-16 h-16 sm:w-20 sm:h-20 text-white" viewBox="0 0 24 24" fill="currentColor">
                                         <circle cx="12" cy="8" r="4" />
                                         <path d="M12 14c-4 0-6 2-6 4v4h12v-4c0-2-2-4-6-4z" />
                                     </svg>
@@ -215,91 +194,73 @@ export default function Voz() {
 
                                 {/* Audio waveform visualization */}
                                 <div className="flex gap-2 justify-center">
-                                    <div className="w-1 h-2 bg-blue-600 rounded-full"></div>
-                                    <div className="w-1 h-4 bg-blue-600 rounded-full"></div>
-                                    <div className="w-1 h-6 bg-blue-600 rounded-full"></div>
-                                    <div className="w-1 h-4 bg-blue-600 rounded-full"></div>
-                                    <div className="w-1 h-2 bg-blue-600 rounded-full"></div>
-                                    <div className="w-1 h-6 bg-blue-600 rounded-full"></div>
-                                    <div className="w-1 h-2 bg-blue-600 rounded-full"></div>
-                                    <div className="w-1 h-4 bg-blue-600 rounded-full"></div>
-                                    <div className="w-1 h-6 bg-blue-600 rounded-full"></div>
-                                    <div className="w-1 h-4 bg-blue-600 rounded-full"></div>
+                                    <div className={`w-1 ${isRecording ? 'h-6 bg-red-600' : 'h-2 bg-blue-600'} rounded-full transition-all`}></div>
+                                    <div className={`w-1 ${isRecording ? 'h-8 bg-red-600' : 'h-4 bg-blue-600'} rounded-full transition-all`}></div>
+                                    <div className={`w-1 ${isRecording ? 'h-10 bg-red-600' : 'h-6 bg-blue-600'} rounded-full transition-all`}></div>
+                                    <div className={`w-1 ${isRecording ? 'h-8 bg-red-600' : 'h-4 bg-blue-600'} rounded-full transition-all`}></div>
+                                    <div className={`w-1 ${isRecording ? 'h-6 bg-red-600' : 'h-2 bg-blue-600'} rounded-full transition-all`}></div>
+                                    <div className={`w-1 ${isRecording ? 'h-10 bg-red-600' : 'h-6 bg-blue-600'} rounded-full transition-all`}></div>
+                                    <div className={`w-1 ${isRecording ? 'h-6 bg-red-600' : 'h-2 bg-blue-600'} rounded-full transition-all`}></div>
+                                    <div className={`w-1 ${isRecording ? 'h-8 bg-red-600' : 'h-4 bg-blue-600'} rounded-full transition-all`}></div>
+                                    <div className={`w-1 ${isRecording ? 'h-10 bg-red-600' : 'h-6 bg-blue-600'} rounded-full transition-all`}></div>
+                                    <div className={`w-1 ${isRecording ? 'h-8 bg-red-600' : 'h-4 bg-blue-600'} rounded-full transition-all`}></div>
                                 </div>
-                                {/* AUDIO STATUS AND RESULTS */}
+
+                                {/* Status and Results */}
                                 <div className="w-full max-w-md space-y-4">
                                     {/* Status message */}
                                     <p className="text-center text-sm font-semibold text-slate-600">
                                         {isRecording
-                                            ? '🎤 Escuchando... diga su DNI completo'
-                                            : isTranscribing
-                                              ? '🔄 Transcribiendo...'
+                                            ? '🎤 Grabando... diga su DNI completo'
+                                            : isValidating
+                                              ? '🔄 Validando...'
                                               : 'Presione el botón para grabar'}
                                     </p>
 
-                                    {text && (
+                                    {/* Transcription */}
+                                    {transcription && (
                                         <div className="rounded-xl bg-white p-4 text-sm text-slate-700 shadow-sm">
-                                            <strong>Transcripción:</strong> {text}
+                                            <strong>Transcripción:</strong> {transcription}
                                         </div>
                                     )}
 
-                                    {detectedDni && (
-                                        <div className="rounded-xl bg-blue-50 p-4">
-                                            <p className="text-sm font-medium text-slate-600">DNI detectado</p>
-                                            <strong className="text-lg text-slate-900">{detectedDni}</strong>
+                                    {/* Detected DNI */}
+                                    {detectedDni && !error && (
+                                        <div className="rounded-xl bg-green-50 p-4 border border-green-200">
+                                            <p className="text-sm font-medium text-slate-600 mb-1">✓ DNI detectado</p>
+                                            <strong className="text-lg text-green-700">{detectedDni}</strong>
+                                            <p className="text-xs text-slate-500 mt-2">Redirigiendo a verificación...</p>
                                         </div>
                                     )}
 
+                                    {/* Error message */}
                                     {error && (
                                         <div className="rounded-xl bg-red-100 p-4 text-sm font-semibold text-red-700">
-                                            {error}
-                                        </div>
-                                    )}
-                                    {successMessage && (
-                                        <div className="rounded-xl bg-green-100 p-4 text-sm font-semibold text-green-700">
-                                            {successMessage}
-                                        </div>
-                                    )}
-                                    {beneficiary && (
-                                        <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm">
-                                            <p className="text-sm text-slate-500">Beneficiario encontrado</p>
-
-                                            <h3 className="text-xl font-bold text-slate-900">
-                                                {beneficiary.fullName}
-                                            </h3>
-
-                                            <div className="grid grid-cols-1 gap-3 text-sm text-slate-700 sm:grid-cols-2">
-                                                <p><strong>DNI:</strong> {beneficiary.dni}</p>
-                                                <p><strong>Bono:</strong> {beneficiary.bonusName}</p>
-                                                <p><strong>Monto:</strong> S/ {beneficiary.bonusAmount}</p>
-                                                <p><strong>Estado:</strong> {beneficiary.bonusStatus}</p>
-                                                <p><strong>Lugar:</strong> {beneficiary.paymentPlace}</p>
-                                                <p><strong>Fecha:</strong> {beneficiary.paymentDate}</p>
-                                            </div>
+                                            ⚠️ {error}
                                         </div>
                                     )}
                                 </div>
+                            </div>
 
-                                {/* Right: Help Card */}
-                                <div className="flex flex-col gap-3 sm:gap-4">
-                                    {/* Help Card */}
-                                    <div className="p-4 sm:p-5 bg-amber-50 rounded-xl shadow-sm hover:shadow-md transition">
-                                        <div className="flex gap-3 items-start">
-                                            <img src={iconHelp} alt="Ayuda" className="w-5 h-5 flex-shrink-0 mt-1" />
-                                            <div>
-                                                <p className="text-sm sm:text-base font-semibold text-amber-900 mb-1">¿Necesita ayuda?</p>
-                                                <p className="text-sm text-amber-800 leading-relaxed">
-                                                    Hable de forma clara y pausada frente a su dispositivo.
-                                                </p>
-                                            </div>
+                            {/* Right: Help Card */}
+                            <div className="flex flex-col gap-3 sm:gap-4">
+                                {/* Help Card */}
+                                <div className="p-4 sm:p-5 bg-amber-50 rounded-xl shadow-sm hover:shadow-md transition">
+                                    <div className="flex gap-3 items-start">
+                                        <img src={iconHelp} alt="Ayuda" className="w-5 h-5 flex-shrink-0 mt-1" />
+                                        <div>
+                                            <p className="text-sm sm:text-base font-semibold text-amber-900 mb-1">¿Necesita ayuda?</p>
+                                            <p className="text-sm text-amber-800 leading-relaxed">
+                                                Hable de forma clara y pausada frente a su dispositivo.
+                                            </p>
                                         </div>
                                     </div>
+                                </div>
 
-                                    {/* Biometry Active Badge */}
-                                    <div className="p-3 sm:p-4 bg-slate-100 rounded-lg border border-slate-200 flex gap-3 items-center">
-                                        <img src={iconBiometryActive} alt="Biometría Activa" className="w-5 h-5 flex-shrink-0" />
-                                        <span className="text-sm sm:text-base font-bold text-slate-900">Biometría Activa</span>
-                                    </div>
+                                {/* Biometry Active Badge */}
+                                <div className="p-3 sm:p-4 bg-slate-100 rounded-lg border border-slate-200 flex gap-3 items-center">
+                                    <img src={iconBiometryActive} alt="Biometría Activa" className="w-5 h-5 flex-shrink-0" />
+                                    <span className="text-sm sm:text-base font-bold text-slate-900">Biometría Activa</span>
                                 </div>
                             </div>
                         </div>
