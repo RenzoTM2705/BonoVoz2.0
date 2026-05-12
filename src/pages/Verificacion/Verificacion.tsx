@@ -1,8 +1,26 @@
 import iconBiometryActive from '../../assets/icon-biometry-active.svg'
 import iconSimulate from '../../assets/icon-simulate.svg'
-import { Link } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { useUser } from '../../contexts/UserContext'
+import { useEffect } from 'react'
+import type { Beneficiary } from '../../types/beneficiary.types'
 
 export default function Verificacion() {
+  const { verifiedBeneficiary, setVerifiedBeneficiary, clearVerification } = useUser()
+  const location = useLocation()
+  const candidate = location.state && (location.state as any).candidate as Beneficiary | undefined
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    // Si no hay candidato y no hay beneficiario confirmado, regresar a /voz
+    if (!candidate && !verifiedBeneficiary) {
+      navigate('/voz')
+    }
+  }, [candidate, verifiedBeneficiary, navigate])
+
+  const display = verifiedBeneficiary ?? candidate
+  if (!display) return null
+
   return (
     <div className="w-full min-h-screen bg-slate-50 py-10 px-4 sm:px-6 lg:px-8">
       <main className="max-w-md mx-auto">
@@ -29,11 +47,11 @@ export default function Verificacion() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs uppercase text-slate-500 font-semibold">Beneficiario</p>
-                <p className="text-sm font-semibold text-slate-900">Maria Fernanda Quispe</p>
+                <p className="text-sm font-semibold text-slate-900">{display.fullName}</p>
               </div>
               <div>
                 <p className="text-xs uppercase text-slate-500 font-semibold">DNI detectado</p>
-                <p className="text-sm font-semibold text-slate-900">45678912</p>
+                <p className="text-sm font-semibold text-slate-900">{display.dni}</p>
               </div>
             </div>
 
@@ -42,18 +60,36 @@ export default function Verificacion() {
                 <img src={iconSimulate} alt="Bono" className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-sm">Bono Alimentario 2024</p>
-                <p className="text-lg font-semibold">S/ 760.00</p>
+                <p className="text-sm">{display.bonusName}</p>
+                <p className="text-lg font-semibold">S/ {display.bonusAmount}</p>
               </div>
             </div>
 
             <div className="space-y-3">
-              <Link to="/bono" className="w-full block bg-slate-900 text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 text-center">
+              <button
+                onClick={() => {
+                  // Confirmar verificación en contexto y proceder a Mi Bono
+                  if (!verifiedBeneficiary && candidate) {
+                    setVerifiedBeneficiary(candidate)
+                  }
+                  navigate('/bono')
+                }}
+                className="w-full block bg-slate-900 text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 text-center cursor-pointer"
+              >
                 <span>Continuar a Mi Bono</span>
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
-              </Link>
+              </button>
 
-              <Link to="/voz" className="w-full block bg-amber-300 text-amber-900 py-3 rounded-lg font-semibold text-center">Reintentar Validación</Link>
+              <button
+                onClick={() => {
+                  // Reintentar: limpiar cualquier verificación confirmada y volver a Voz
+                  clearVerification()
+                  navigate('/voz')
+                }}
+                className="w-full block bg-amber-300 text-amber-900 py-3 rounded-lg font-semibold text-center cursor-pointer"
+              >
+                Reintentar Validación
+              </button>
             </div>
 
           </div>
