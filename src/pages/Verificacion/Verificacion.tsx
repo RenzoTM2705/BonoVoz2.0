@@ -55,6 +55,7 @@ export default function Verificacion() {
 
               <Link to="/voz" className="w-full block bg-amber-300 text-amber-900 py-3 rounded-lg font-semibold text-center">Reintentar Validación</Link>
             </div>
+
           </div>
         </section>
 
