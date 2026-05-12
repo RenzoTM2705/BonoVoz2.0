@@ -4,11 +4,9 @@
 
 import { Request, Response } from 'express'
 import { transcribeAudioRealOpenAI } from '../services/transcription.service.js'
-import {
-  extractDniFromText,
-  findBeneficiaryByDni,
-  isValidDniFormat,
-} from '../utils/dni.utils.js'
+import { extractDniFromText, isValidDniFormat } from '../utils/dni.utils.js'
+import { findBeneficiaryByDni } from '../services/beneficiary.service.js'
+import { createValidationLog } from '../services/validation-log.service.js'
 import type { ApiError, VoiceTranscriptionResponse } from '../types/index.js'
 
 /**
@@ -62,9 +60,33 @@ export async function transcribeVoice(req: Request, res: Response): Promise<void
 
     // Buscar beneficiario si se encontró DNI
     let beneficiary = null
+    let beneficiaryId: string | null = null
+    let status: 'success' | 'not_found' | 'no_dni' | 'error' = 'no_dni'
+
     if (dni && isValidDniFormat(dni)) {
-      beneficiary = findBeneficiaryByDni(dni)
+      const found = await findBeneficiaryByDni(dni)
+      if (found) {
+        beneficiary = found
+        beneficiaryId = found.id
+        status = 'success'
+      } else {
+        status = 'not_found'
+      }
+    } else {
+      status = 'no_dni'
     }
+
+    // Guardar registro de validación en Supabase
+    await createValidationLog({
+      dniDetected: dni || null,
+      transcription: transcription || null,
+      beneficiaryId: beneficiaryId,
+      status: status,
+      confidence: null,
+      source: 'api',
+      errorMessage: null,
+      userAgent: req.headers['user-agent'] || null,
+    })
 
     // Construir respuesta
     const response: VoiceTranscriptionResponse = {
@@ -77,7 +99,7 @@ export async function transcribeVoice(req: Request, res: Response): Promise<void
       },
     }
 
-    res.status(200).json(response)
+    res.status(200).json({ ...response, status })
   } catch (error) {
     console.error('[ERROR] transcribeVoice:', error)
 

@@ -10,6 +10,8 @@ import { createServer } from 'http'
 import { WebSocketServer } from 'ws'
 import voiceRoutes from './routes/voice.routes.js'
 import chatbotRoutes from './routes/chatbot.routes.js'
+import adminRoutes from './routes/admin.routes.js'
+import authRoutes from './routes/auth.routes.js'
 import { handleVoiceStream } from './controllers/voiceStream.controller.js'
 
 const app = express()
@@ -44,6 +46,8 @@ app.use((req, _res, next) => {
 // Rutas HTTP
 app.use('/api/voice', voiceRoutes)
 app.use('/api/chatbot', chatbotRoutes)
+app.use('/api/admin', adminRoutes)
+app.use('/api/auth', authRoutes)
 
 // Health check endpoint
 app.get('/health', (_req, res) => {
