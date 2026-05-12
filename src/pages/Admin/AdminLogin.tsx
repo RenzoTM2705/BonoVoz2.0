@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { adminLogin } from '../../services/auth.service'
 
 interface AdminLoginProps {
   onLogin: (authenticated: boolean) => void
@@ -9,22 +10,25 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-
-    if (email === 'adminbono@gmail.com' && password === 'admin27') {
+    setLoading(true)
+    try {
+      await adminLogin(email, password)
       localStorage.setItem('adminAuthenticated', 'true')
       onLogin(true)
-    } else {
-      setError('Credenciales inválidas. Verifica tu email y contraseña.')
-      setPassword('')
+    } catch (err: any) {
+      setError(err?.message || 'Credenciales inválidas')
+    } finally {
+      setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-linear-to-br from-slate-900 to-slate-800 flex items-center justify-center px-4">
       {/* Background decoration */}
       <div className="absolute top-0 left-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl -z-10"></div>
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl -z-10"></div>
@@ -86,7 +90,7 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
             {/* Error message */}
             {error && (
               <div className="p-4 rounded-lg bg-red-900/30 border border-red-500/50 flex items-start gap-3">
-                <span className="text-xl flex-shrink-0">⚠️</span>
+                <span className="text-xl shrink-0">⚠️</span>
                 <p className="text-red-400 text-sm">{error}</p>
               </div>
             )}
@@ -94,9 +98,10 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
             {/* Submit button */}
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-900 font-bold py-3 rounded-lg transition-all shadow-lg cursor-pointer"
+              disabled={loading}
+              className="w-full bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 disabled:opacity-70 disabled:cursor-not-allowed text-slate-900 font-bold py-3 rounded-lg transition-all shadow-lg cursor-pointer"
             >
-              Iniciar Sesión
+              {loading ? 'Ingresando...' : 'Iniciar Sesión'}
             </button>
           </form>
 
