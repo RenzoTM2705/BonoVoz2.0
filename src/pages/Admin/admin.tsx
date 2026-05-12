@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { fetchAdminMetrics } from '../../services/admin.service'
 
 interface AdminProps {
   onLogout: () => void
@@ -6,6 +7,17 @@ interface AdminProps {
 
 export default function Admin({ onLogout }: AdminProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [metrics, setMetrics] = useState<any>(null)
+
+  useEffect(() => {
+    setLoading(true)
+    fetchAdminMetrics()
+      .then((data) => setMetrics(data))
+      .catch((err) => setError(err.message || 'Error al obtener métricas'))
+      .finally(() => setLoading(false))
+  }, [])
 
   return (
     <div>
@@ -84,7 +96,7 @@ export default function Admin({ onLogout }: AdminProps) {
                   <span className="text-green-600 text-xs sm:text-sm font-semibold">↑ 12%</span>
                 </div>
                 <p className="text-slate-600 text-xs sm:text-sm mb-2">Usuarios Registrados</p>
-                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900">2.4M</p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900">{metrics ? metrics.totalBeneficiaries : '—'}</p>
               </div>
 
               {/* Metric Card 2 */}
@@ -94,7 +106,7 @@ export default function Admin({ onLogout }: AdminProps) {
                   <span className="text-green-600 text-xs sm:text-sm font-semibold">↑ 8.4%</span>
                 </div>
                 <p className="text-slate-600 text-xs sm:text-sm mb-2">Validaciones por Voz</p>
-                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900">1.8M</p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900">{metrics ? metrics.totalVoiceValidations : '—'}</p>
               </div>
 
               {/* Metric Card 3 */}
@@ -104,7 +116,7 @@ export default function Admin({ onLogout }: AdminProps) {
                   <span className="text-red-600 text-xs sm:text-sm font-semibold">↓ 0.5%</span>
                 </div>
                 <p className="text-slate-600 text-xs sm:text-sm mb-2">Errores Reconocimiento</p>
-                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900">2.4%</p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900">{metrics ? `${metrics.recognitionErrorRate.toFixed(2)}%` : '—'}</p>
               </div>
 
               {/* Metric Card 4 */}
@@ -114,7 +126,7 @@ export default function Admin({ onLogout }: AdminProps) {
                   <span className="text-green-600 text-xs sm:text-sm font-semibold">↑ 15%</span>
                 </div>
                 <p className="text-slate-600 text-xs sm:text-sm mb-2">Bonos Entregados</p>
-                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900">S/ 1.2B</p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900">{metrics ? `S/ ${metrics.deliveredBonusAmount}` : '—'}</p>
               </div>
             </div>
 
@@ -125,12 +137,36 @@ export default function Admin({ onLogout }: AdminProps) {
                 <button className="text-slate-600 hover:text-slate-900 text-sm font-medium">Ver detalle →</button>
               </div>
 
-              {/* Placeholder Chart */}
-              <div className="h-48 sm:h-64 bg-gradient-to-b from-slate-100 to-slate-50 rounded-lg flex items-center justify-center border border-slate-200">
-                <div className="text-center">
-                  <span className="text-4xl sm:text-5xl">📊</span>
-                  <p className="text-slate-500 text-xs sm:text-sm mt-2">Grafico de validaciones diarias</p>
-                </div>
+              {/* Chart */}
+              <div className="h-48 sm:h-64 bg-linear-to-b from-slate-100 to-slate-50 rounded-lg border border-slate-200 p-4">
+                {loading && <div className="text-center">Cargando métricas...</div>}
+                {error && <div className="text-center text-red-600">{error}</div>}
+                {!loading && !error && (
+                  <div className="h-full flex items-end gap-2">
+                    {(metrics?.dailyValidations || [
+                      { day: 'Lun', count: 0 },
+                      { day: 'Mar', count: 0 },
+                      { day: 'Mie', count: 0 },
+                      { day: 'Jue', count: 0 },
+                      { day: 'Vie', count: 0 },
+                      { day: 'Sab', count: 0 },
+                      { day: 'Dom', count: 0 },
+                    ]).map((item: { day: string; count: number }) => {
+                      const height = Math.min(100, item.count * 10) || 6
+
+                      return (
+                        <div key={item.day} className="flex-1 flex flex-col items-center">
+                          <div
+                            className="w-full bg-amber-500 rounded-t-md"
+                            style={{ height: `${height}%` }}
+                            aria-label={`${item.day}: ${item.count} validaciones`}
+                          />
+                          <div className="text-xs mt-2 text-slate-600">{item.day}</div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Chart Legend */}
@@ -146,7 +182,7 @@ export default function Admin({ onLogout }: AdminProps) {
             {/* Info Box */}
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 sm:p-6 mb-8">
               <div className="flex gap-3">
-                <span className="text-2xl sm:text-3xl flex-shrink-0">ℹ️</span>
+                <span className="text-2xl sm:text-3xl shrink-0">ℹ️</span>
                 <div>
                   <h3 className="font-semibold text-blue-900 mb-1 text-sm sm:text-base">Acceso Protegido</h3>
                   <p className="text-blue-700 text-xs sm:text-sm">
