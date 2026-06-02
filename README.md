@@ -1,75 +1,61 @@
-# React + TypeScript + Vite
+# BonoVoz
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicación web para atención y validación de beneficios mediante voz.
 
-Currently, two official plugins are available:
+## Estructura
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+El proyecto quedó dividido en dos partes:
 
-## React Compiler
+- `frontend/`: interfaz React + Vite + TypeScript.
+- `backend/`: API Express + TypeScript para voz, autenticación y administración.
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+## Frontend
 
-Note: This will impact Vite dev & build performances.
+El frontend usa una organización por vistas y servicios, que es la forma más natural de trabajar con React sin forzar un MVC clásico:
 
-## Expanding the ESLint configuration
+- `src/pages`: pantallas y vistas
+- `src/components`: componentes reutilizables
+- `src/services`: consumo de API
+- `src/contexts`, `src/hooks`, `src/routes`, `src/utils`: soporte transversal
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Ejecutar frontend
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Backend
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+El backend sí sigue una separación muy cercana a MVC:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- `src/routes`: define endpoints
+- `src/controllers`: recibe requests y arma responses
+- `src/services`: lógica de negocio y acceso a datos
+- `src/utils`, `src/types`, `src/config`: soporte auxiliar
+
+### Ejecutar backend
+
+```bash
+cd backend
+npm install
+npm run dev
 ```
+
+## Flujo principal
+
+```mermaid
+flowchart LR
+  User[Usuario] --> Frontend[frontend/ React]
+  Frontend --> API[backend/ Express API]
+  API --> Controllers[controllers]
+  Controllers --> Services[services]
+  Services --> Data[Supabase / Deepgram / utilidades]
+  Services --> API
+  API --> Frontend
+```
+
+## Nota
+
+La estructura se mantuvo sin cambiar nombres internos ni rutas relativas del frontend, para no romper el build ni el enrutamiento existente.
