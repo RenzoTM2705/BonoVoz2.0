@@ -1,7 +1,7 @@
 import Footer from '../../components/Footer'
 import iconConsult from '../../assets/icon-consult.svg'
 import iconAssistant from '../../assets/icon-assistant.svg'
-import heroIllustration from '../../assets/hero-illustration.svg'
+import mainPicture from '../../assets/main-picture.svg'
 import iconBiometry from '../../assets/icon-biometry.svg'
 import iconSeal from '../../assets/icon-seal.svg'
 import iconLogistics from '../../assets/icon-logistics.svg'
@@ -32,14 +32,15 @@ export default function Principal() {
                                     Inclusión total sin trámites complejos. Accede a tus beneficios usando solo tu voz, de manera segura y sin salir de casa.
                                 </p>
 
+
                                 {/* CTA Buttons */}
                                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4">
                                     <button className="flex items-center justify-center gap-2 bg-slate-900 text-white px-4 sm:px-6 py-3 rounded-lg hover:bg-slate-800 transition font-semibold text-sm sm:text-base cursor-pointer">
-                                        <div className="w-5 h-5 bg-cover bg-no-repeat flex-shrink-0" style={{ backgroundImage: `url(${iconConsult})` }} />
+                                        <div className="w-5 h-5 bg-cover bg-no-repeat shrink-0" style={{ backgroundImage: `url(${iconConsult})` }} />
                                         <span>Consultar mi Bono</span>
                                     </button>
                                     <button className="flex items-center justify-center gap-2 bg-amber-300 text-amber-900 px-4 sm:px-6 py-3 rounded-lg hover:bg-amber-400 transition font-semibold text-sm sm:text-base cursor-pointer">
-                                        <div className="w-5 h-5 bg-cover bg-no-repeat flex-shrink-0" style={{ backgroundImage: `url(${iconAssistant})` }} />
+                                        <div className="w-5 h-5 bg-cover bg-no-repeat shrink-0" style={{ backgroundImage: `url(${iconAssistant})` }} />
                                         <span>Hablar con Asistente</span>
                                     </button>
                                 </div>
@@ -53,7 +54,16 @@ export default function Principal() {
                             </div>
 
                             {/* Right Illustration */}
-                            <div className="w-full h-64 sm:h-80 lg:h-96 bg-cover bg-center rounded-2xl" style={{ backgroundImage: `url(${heroIllustration})` }} />
+                            <div className="relative w-full">
+                                <div className="absolute -inset-3 sm:-inset-4 rounded-4xl" />
+                                <div className="relative overflow-hidden rounded-4xl border-none bg-white">
+                                    <img
+                                        src={mainPicture}
+                                        alt="Vista principal de BonoVoz"
+                                        className="w-full h-80 sm:h-105 lg:h-130 object-cover"
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -112,8 +122,8 @@ export default function Principal() {
                         <div className="space-y-8 sm:space-y-10 max-w-4xl mx-auto">
                             {/* Step 1 */}
                             <div className="flex gap-4 sm:gap-6">
-                                <div className="flex-shrink-0 w-12 h-12 bg-amber-400 text-slate-900 rounded-full flex items-center justify-center font-bold text-lg">
-                                    1
+                                <div className="shrink-0 w-12 h-12 bg-amber-400 text-slate-900 rounded-full flex items-center justify-center">
+                                    <div className="w-6 h-6 bg-cover bg-no-repeat" style={{ backgroundImage: `url(${iconConsult})` }} />
                                 </div>
                                 <div className="pt-1">
                                     <h3 className="text-lg sm:text-xl font-bold mb-2">Regístrate</h3>
@@ -125,8 +135,8 @@ export default function Principal() {
 
                             {/* Step 2 */}
                             <div className="flex gap-4 sm:gap-6">
-                                <div className="flex-shrink-0 w-12 h-12 bg-amber-400 text-slate-900 rounded-full flex items-center justify-center font-bold text-lg">
-                                    2
+                                <div className="shrink-0 w-12 h-12 bg-amber-400 text-slate-900 rounded-full flex items-center justify-center">
+                                    <div className="w-6 h-6 bg-cover bg-no-repeat" style={{ backgroundImage: `url(${iconBiometry})` }} />
                                 </div>
                                 <div className="pt-1">
                                     <h3 className="text-lg sm:text-xl font-bold mb-2">Verifica</h3>
@@ -138,8 +148,8 @@ export default function Principal() {
 
                             {/* Step 3 */}
                             <div className="flex gap-4 sm:gap-6">
-                                <div className="flex-shrink-0 w-12 h-12 bg-amber-400 text-slate-900 rounded-full flex items-center justify-center font-bold text-lg">
-                                    3
+                                <div className="shrink-0 w-12 h-12 bg-amber-400 text-slate-900 rounded-full flex items-center justify-center">
+                                    <div className="w-6 h-6 bg-cover bg-no-repeat" style={{ backgroundImage: `url(${iconSeal})` }} />
                                 </div>
                                 <div className="pt-1">
                                     <h3 className="text-lg sm:text-xl font-bold mb-2">Cobra</h3>
@@ -147,37 +157,6 @@ export default function Principal() {
                                         Elige tu modalidad de pago y recibe la confirmación inmediata en tu celular.
                                     </p>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                {/* Simulator Section */}
-                <section className="w-full py-12 sm:py-16 md:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 bg-slate-900 text-white">
-                    <div className="max-w-2xl mx-auto">
-                        <div className="bg-white text-slate-900 p-6 sm:p-8 lg:p-10 rounded-2xl shadow-xl">
-                            <h3 className="text-xl sm:text-2xl font-bold mb-6">Simulador de Consulta</h3>
-
-                            <div className="space-y-5">
-                                {/* Input */}
-                                <div>
-                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Número de DNI</label>
-                                    <input
-                                        type="text"
-                                        placeholder="Ej. 00000000"
-                                        className="w-full px-4 py-3 border-2 border-slate-300 rounded-lg focus:border-slate-900 focus:outline-none text-slate-900"
-                                    />
-                                </div>
-
-                                {/* Button */}
-                                <button className="w-full bg-amber-300 text-amber-900 px-6 py-3 rounded-lg hover:bg-amber-400 transition font-semibold text-base cursor-pointer">
-                                    Iniciar Validación por Voz
-                                </button>
-
-                                {/* Help Text */}
-                                <p className="text-center text-sm text-slate-600">
-                                    Presiona el botón para comenzar el proceso.
-                                </p>
                             </div>
                         </div>
                     </div>
